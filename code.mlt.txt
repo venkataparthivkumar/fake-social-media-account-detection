@@ -1,0 +1,84 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (confusion_matrix, accuracy_score,
+                             precision_score, recall_score,
+                             f1_score, roc_curve, auc)
+try:
+    dataset = pd.read_csv("fake_accounts.csv")
+except FileNotFoundError:
+    rng = np.random.default_rng(42)
+    dataset = pd.DataFrame({
+        "followers": rng.integers(10, 10000, size=500),
+        "following": rng.integers(5, 8000, size=500),
+        "posts": rng.integers(0, 2000, size=500),
+        "engagement": rng.random(500) * 100,
+        "account_age": rng.integers(1, 3650, size=500),
+        "label": rng.choice([0, 1], size=500, p=[0.7, 0.3])
+    })
+X = dataset.drop(columns="label")
+y = dataset["label"]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42)
+rf_clf = RandomForestClassifier(n_estimators=150, random_state=42)
+rf_clf.fit(X_train, y_train)
+y_pred = rf_clf.predict(X_test)
+y_score = rf_clf.predict_proba(X_test)[:, 1]
+fpr, tpr, _ = roc_curve(y_test, y_score)
+roc_auc = auc(fpr, tpr)
+sns.set_style("whitegrid")  
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(6, 5))
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+            xticklabels=["Genuine", "Fake"],
+            yticklabels=["Genuine", "Fake"])
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted Label")
+plt.ylabel("Actual Label")
+plt.tight_layout()
+plt.show()
+plt.figure(figsize=(6, 5))
+plt.plot(fpr, tpr, color="navy", lw=2, label=f"AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle="--", color="gray")
+plt.title("ROC Curve")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.legend(loc="lower right")
+plt.tight_layout()
+plt.show()
+importances = pd.Series(rf_clf.feature_importances_, index=X.columns)
+plt.figure(figsize=(6, 5))
+importances.sort_values().plot(kind="barh", color="teal")
+plt.title("Feature Importance")
+plt.xlabel("Importance Score")
+plt.ylabel("Features")
+plt.tight_layout()
+plt.show()
+plt.figure(figsize=(6, 5))
+sns.countplot(x="label", data=dataset, palette="Set2")
+plt.xticks([0, 1], ["Genuine", "Fake"])
+plt.title("Class Distribution")
+plt.xlabel("Account Type")
+plt.ylabel("Number of Accounts")
+plt.tight_layout()
+plt.show()
+plt.figure(figsize=(6, 5))
+sns.scatterplot(data=dataset, x="followers", y="engagement",
+                hue="label", palette={0: "green", 1: "red"}, alpha=0.7)
+plt.title("Followers vs Engagement")
+plt.xlabel("Followers (log scale)")
+plt.ylabel("Engagement Rate")
+plt.xscale("log")
+plt.tight_layout()
+plt.show()
+plt.figure(figsize=(6, 5))
+sns.scatterplot(data=dataset, x="account_age", y="posts",
+                hue="label", palette={0: "green", 1: "red"}, alpha=0.7)
+plt.title("Account Age vs Posts")
+plt.xlabel("Account Age (days)")
+plt.ylabel("Number of Posts")
+plt.tight_layout()
+plt.show()
